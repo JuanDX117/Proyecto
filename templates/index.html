@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplicación Geoespacial</title>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAVqKR_OuT9YPIb_n6tqk-H9ro5pHcl56k&callback=initMap" async defer></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+
+        #map {
+            width: 100%;
+            height: 500px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            text-align: center;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        button {
+            padding: 10px 15px;
+            background-color: #007BFF;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        input[type="file"] {
+            margin-bottom: 10px;
+        }
+
+        #results {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Mapa Geoespacial</h1>
+        <div id="map"></div>
+        <input type="file" id="file-input" accept=".csv">
+        <button id="load-data">Cargar datos</button>
+        <button id="calculate-proximity">Calcular Proximidad</button>
+        <div id="results"></div>
+    </div>
+
+    <script>
+        var map;
+        var csvData = [];
+
+        // Inicializar el mapa
+        function initMap() {
+            map = new google.maps.Map(document.getElementById('map'), {
+                center: { lat: 10.5, lng: -72.5 }, // Coordenadas de Cúcuta
+                zoom: 10,
+                mapTypeId: 'roadmap'
+            });
+        }
+
+        // Función para calcular la distancia entre dos coordenadas usando la fórmula Haversine
+        function haversine(lat1, lon1, lat2, lon2) {
+            var R = 6371; // Radio de la Tierra en kilómetros
+            var dLat = (lat2 - lat1) * Math.PI / 180;
+            var dLon = (lon2 - lon1) * Math.PI / 180;
+            var a =
+                0.5 - Math.cos(dLat)/2 +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+                (1 - Math.cos(dLon)) / 2;
+
+            return R * 2 * Math.asin(Math.sqrt(a));
+        }
+
+        $(document).ready(function() {
+            // Cargar los datos CSV y mostrar los marcadores en el mapa
+            $('#load-data').click(function() {
+                var fileInput = document.getElementById('file-input');
+                var file = fileInput.files[0];
+
+                if (file) {
+                    var reader = new FileReader();
+                    reader.onload = function(event) {
+                        var csvContent = event.target.result;
+                        Papa.parse(csvContent, {
+                            header: true,
+                            complete: function(results) {
+                                csvData = results.data;
+                                console.log(csvData); // Verifica que se estén cargando los datos correctamente
+                                csvData.forEach(function(row) {
+                                    var latitude = parseFloat(row.latitude);
+                                    var longitude = parseFloat(row.longitude);
+                                    if (!isNaN(latitude) && !isNaN(longitude)) {
+                                        new google.maps.Marker({
+                                            position: { lat: latitude, lng: longitude },
+                                            map: map,
+                                            title: row.nombre
+                                        });
+                                    }
+                                });
+                            }
+                        });
+                    };
+                    reader.readAsText(file);
+                } else {
+                    alert("Por favor, selecciona un archivo CSV.");
+                }
+            });
+
+            // Calcular la proximidad entre los puntos cargados
+            $('#calculate-proximity').click(function() {
+                if (csvData.length > 1) {
+                    $('#results').html(''); // Limpiar resultados previos
+
+                    for (let i = 0; i < csvData.length; i++) {
+                        for (let j = i + 1; j < csvData.length; j++) {
+                            var point1 = csvData[i];
+                            var point2 = csvData[j];
+
+                            var lat1 = parseFloat(point1.latitude);
+                            var lon1 = parseFloat(point1.longitude);
+                            var lat2 = parseFloat(point2.latitude);
+                            var lon2 = parseFloat(point2.longitude);
+
+                            if (!isNaN(lat1) && !isNaN(lon1) && !isNaN(lat2) && !isNaN(lon2)) {
+                                var distance = haversine(lat1, lon1, lat2, lon2);
+
+                                // Mostrar los resultados en el HTML
+                                $('#results').append(
+                                    `<p>Distancia entre ${point1.nombre} y ${point2.nombre}: ${distance.toFixed(2)} km</p>`
+                                );
+                            }
+                        }
+                    }
+                } else {
+                    alert('Por favor, carga al menos dos puntos geográficos para calcular la proximidad.');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

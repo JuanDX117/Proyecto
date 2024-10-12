@@ -1,0 +1,13 @@
+version: '3.8'  # Versión de docker-compose
+
+services:
+  app:  # Nombre del servicio
+    build:
+      context: .  # Contexto de construcción
+      dockerfile: Dockerfile  # Nombre del Dockerfile
+    ports:
+      - "5000:5000"  # Mapea el puerto 5000 del contenedor al puerto 5000 de tu máquina
+    volumes:
+      - .:/app  # Monta el directorio actual en /app en el contenedor
+    environment:
+      - FLASK_ENV=development  # Establece el entorno de Flask a desarrollo
